@@ -23,7 +23,7 @@ import requests
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 
-BASE_URL = os.environ.get("MANGAWORLD_BASE", "https://www.mangaworld.mx").rstrip("/")
+BASE_URL = (os.environ.get("MANGAWORLD_BASE") or "https://www.mangaworld.mx").rstrip("/")
 ARCHIVE_URL = f"{BASE_URL}/archive"
 
 # Stati MangaWorld (italiano) -> chiavi canoniche usate dalla UI (statusLabel).

@@ -297,11 +297,37 @@ async function viewReader(chapterId, mangaId) {
   // Tap sulla pagina: mostra/nasconde le barre (reader-bar in alto + tabbar in
   // basso). In orizzontale i tap-zone laterali servono a navigare, li ignoriamo.
   stage.addEventListener("click", (e) => {
-    if (e.target.closest(".tap-zone")) return;
+    if (e.target.closest(".tap-zone, .chapter-nav")) return;
     document.body.classList.toggle("chrome-hidden");
   });
 
   let pages = [];
+
+  // Navigazione capitolo precedente/successivo, mostrata a fine capitolo.
+  // L'elenco arriva in parallelo alle pagine; `nav` viene riempito quando pronto.
+  const nav = el("div", { class: "chapter-nav" });
+  if (mangaId) {
+    api.fetchChapters(mangaId).then(({ items }) => {
+      const idx = items.findIndex((c) => c.id === chapterId);
+      if (idx < 0) return;
+      const newestFirst = [...items].reverse();
+      const go = (ch) => {
+        store.setLastRead(mangaId, ch, items.length);
+        store.markChaptersAsRead(mangaId, newestFirst, ch.id);
+        location.hash = `#/read/${ch.id}?manga=${mangaId}`;
+      };
+      const navBtn = (ch, label, cls) =>
+        el(
+          "button",
+          { class: `btn ${cls}`, disabled: ch ? null : "", onClick: () => ch && go(ch) },
+          [el("span", { class: "nav-label" }, label), ch ? el("span", { class: "nav-title" }, ch.displayTitle) : null]
+        );
+      nav.append(
+        navBtn(items[idx - 1], "‹ Capitolo precedente", "prev"),
+        navBtn(items[idx + 1], "Capitolo successivo ›", "next save on")
+      );
+    }).catch(() => {});
+  }
 
   async function load() {
     clear(stage);
@@ -342,6 +368,7 @@ async function viewReader(chapterId, mangaId) {
       });
       stage.append(img);
     });
+    stage.append(nav);
     counter.textContent = `1 / ${pages.length}`;
     // aggiorna contatore in base allo scroll
     const imgs = [...stage.querySelectorAll("img.page")];
@@ -367,8 +394,18 @@ async function viewReader(chapterId, mangaId) {
     const zoneR = el("button", { class: "tap-zone right", "aria-label": "Successiva" });
     stage.append(zoneL, img, zoneR);
 
+    // idx === pages.length è la schermata di fine capitolo (con la navigazione).
+    const last = mangaId ? pages.length : pages.length - 1;
     function show(i) {
-      idx = Math.max(0, Math.min(pages.length - 1, i));
+      idx = Math.max(0, Math.min(last, i));
+      if (idx === pages.length) {
+        img.hidden = true;
+        stage.append(nav);
+        counter.textContent = "Fine";
+        return;
+      }
+      nav.remove();
+      img.hidden = false;
       img.src = pages[idx];
       counter.textContent = `${idx + 1} / ${pages.length}`;
     }

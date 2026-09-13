@@ -73,7 +73,27 @@ Open **http://localhost:5173**. Stop with `Ctrl+C`.
 
 ---
 
-## Deploy to a VPS
+## Deploy with Docker (recommended)
+
+The container restarts automatically after a crash or a server reboot
+(`restart: unless-stopped`), and the backup lives in a named volume.
+
+```bash
+# On the VPS, from the repo root:
+cp .env.example .env        # then set YOMI_TOKEN (required)
+docker compose up -d --build
+```
+
+Make sure the Docker daemon itself starts at boot: `sudo systemctl enable docker`.
+
+- Logs: `docker compose logs -f`
+- Update: `git pull && docker compose up -d --build`
+- Behind Caddy on the same host: set `YOMI_BIND=127.0.0.1` in `.env` and point
+  `reverse_proxy` to `127.0.0.1:8080`.
+
+---
+
+## Deploy to a VPS (without Docker)
 
 Keep the backend running on your server so the app works anywhere, even with your
 PC off.

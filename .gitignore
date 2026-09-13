@@ -7,3 +7,6 @@ yomi-data/
 web/.venv/
 __pycache__/
 *.pyc
+
+# Segreti per docker compose
+.env

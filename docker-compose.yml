@@ -1,0 +1,19 @@
+services:
+  yomi:
+    build: ./web
+    container_name: yomi
+    # Riparte da solo al riavvio del server (se il demone Docker parte al boot)
+    # e dopo un crash; resta fermo solo se lo fermi tu con `docker compose stop`.
+    restart: unless-stopped
+    ports:
+      # Dietro un reverse proxy (Caddy) sullo stesso host: YOMI_BIND=127.0.0.1
+      - "${YOMI_BIND:-0.0.0.0}:${YOMI_PORT:-8080}:8080"
+    environment:
+      YOMI_TOKEN: ${YOMI_TOKEN:?Imposta YOMI_TOKEN nel file .env}
+      MANGAWORLD_BASE: ${MANGAWORLD_BASE:-}
+    volumes:
+      # Backup dello stato utente (state.json), persistente tra rebuild/riavvii.
+      - yomi-data:/data
+
+volumes:
+  yomi-data:
