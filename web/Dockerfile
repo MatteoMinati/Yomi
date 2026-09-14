@@ -1,15 +1,20 @@
 FROM python:3.13-slim
 
+COPY --from=ghcr.io/astral-sh/uv:0.11.28 /uv /uvx /bin/
+
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=0 \
+    PATH="/app/.venv/bin:$PATH" \
     HOST=0.0.0.0 \
     YOMI_DATA=/data
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+# Dipendenze prima del codice: il layer resta in cache finché uv.lock non cambia.
+COPY pyproject.toml uv.lock .python-version ./
+RUN uv sync --locked --no-dev --no-install-project
 
 COPY . .
 

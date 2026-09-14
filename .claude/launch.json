@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "yomi-web",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["web/server.py", "5174"],
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "--project", "web", "web/server.py", "5174"],
       "port": 5174
     }
   ]

@@ -61,12 +61,12 @@ Manga and chapter `id`s are the MangaWorld URL encoded in base64url.
 
 ## Quick start (local, on your PC)
 
-Requires **Python 3.13+**.
+Requires **[uv](https://docs.astral.sh/uv/)** (it installs Python 3.13 and the
+dependencies from `uv.lock` by itself).
 
 ```bash
 cd web
-pip install -r requirements.txt
-python server.py            # port 5173 (or: python server.py 8080)
+uv run server.py            # port 5173 (or: uv run server.py 8080)
 ```
 
 Open **http://localhost:5173**. Stop with `Ctrl+C`.
@@ -102,10 +102,10 @@ PC off.
 ```bash
 # Copy the web/ folder to the VPS, then:
 cd web
-pip install -r requirements.txt
+uv sync --locked
 
 # Exposed on all interfaces, on the chosen port:
-HOST=0.0.0.0 python server.py 8080
+HOST=0.0.0.0 uv run server.py 8080
 ```
 
 Check: `http://YOUR-VPS-IP:8080/api/ping` should return `pong`.
@@ -121,7 +121,7 @@ your-vps.example.com {
 }
 ```
 
-and run the backend locally: `HOST=127.0.0.1 python server.py 8080`.
+and run the backend locally: `HOST=127.0.0.1 uv run server.py 8080`.
 
 ### 3. Persistent service (systemd)
 
@@ -135,7 +135,8 @@ After=network.target
 [Service]
 WorkingDirectory=/opt/yomi/web
 Environment=HOST=127.0.0.1
-ExecStart=/usr/bin/python3 server.py 8080
+# Full path to uv (check with `which uv`)
+ExecStart=/usr/local/bin/uv run --locked server.py 8080
 Restart=always
 
 [Install]
@@ -174,7 +175,7 @@ downloadable), by default at `yomi-data/state.json` next to the `web/` folder.
 You can pick another path with `YOMI_DATA`:
 
 ```bash
-YOMI_DATA=/persistent/path/yomi-data python server.py 8080
+YOMI_DATA=/persistent/path/yomi-data uv run server.py 8080
 ```
 
 ---
@@ -191,7 +192,7 @@ YOMI_DATA=/persistent/path/yomi-data python server.py 8080
 
 | Variable | Default | Description |
 |---|---|---|
-| *(port)* | `5173` | First argument: `python server.py 8080` |
+| *(port)* | `5173` | First argument: `uv run server.py 8080` |
 | `HOST` | `0.0.0.0` | Listening interface |
 | `MANGAWORLD_BASE` | current domain | If MangaWorld changes TLD (`.mx`, `.ac`, …) |
 | `YOMI_DATA` | `../yomi-data` | Folder where the backup file is stored |
@@ -214,7 +215,8 @@ web/
 ├── icons/                # PWA / apple-touch icons
 ├── server.py             # backend: static hosting + /api/* + /img + /api/state
 ├── mangaworld.py         # MangaWorld scraper (BeautifulSoup)
-└── requirements.txt      # Python dependencies
+├── pyproject.toml        # Python dependencies (uv)
+└── uv.lock               # locked versions (uv)
 ```
 
 Data stored in the browser (`localStorage`): `yomi.library`, `yomi.lastRead`,
@@ -225,7 +227,7 @@ Data stored in the browser (`localStorage`): `yomi.library`, `yomi.lastRead`,
 ## Stack
 
 - **Frontend:** vanilla JavaScript (ES modules), no build step.
-- **Backend:** Python 3.13+ (`requests`, `beautifulsoup4`, `lxml`).
+- **Backend:** Python 3.13+ (`requests`, `beautifulsoup4`, `lxml`), managed with uv.
 - **Storage:** browser `localStorage` + JSON backup on the server.
 - **Deploy:** VPS with an HTTPS reverse proxy (e.g. Caddy).
 

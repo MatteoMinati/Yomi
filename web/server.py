@@ -19,10 +19,9 @@ Espone:
 Gli id manga/capitolo sono l'URL MangaWorld codificato in base64url.
 
 Uso:
-    pip install -r requirements.txt
-    python server.py            # porta 5173
-    python server.py 8080       # porta a scelta
-    HOST=0.0.0.0 python server.py 8080   # esposto sul VPS
+    uv run server.py            # porta 5173 (installa le dipendenze da uv.lock)
+    uv run server.py 8080       # porta a scelta
+    HOST=0.0.0.0 uv run server.py 8080   # esposto sul VPS
 
 Dominio MangaWorld configurabile: MANGAWORLD_BASE=https://www.mangaworld.xx
 """
