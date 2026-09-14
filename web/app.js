@@ -50,6 +50,12 @@ function statusLabel(s) {
   );
 }
 
+// "Capitolo 091" -> "Cap. 91"; se non c'è un numero riconoscibile, titolo intero.
+function chapterShort(title) {
+  const m = /cap(?:itolo)?\.?\s*(\d+(?:[.,]\d+)?)/i.exec(title || "");
+  return m ? `Cap. ${Number(m[1].replace(",", "."))}` : title;
+}
+
 // --- Card ----------------------------------------------------------------
 
 function mangaCard(m) {
@@ -192,6 +198,35 @@ async function viewDetail(mangaId) {
     saveBtn.textContent = nowSaved ? "✓ In libreria" : "+ Aggiungi";
   });
 
+  // Riprende dal capitolo dopo il più avanzato già letto (compare quando
+  // l'elenco capitoli è pronto).
+  const continueBtn = el("button", { class: "btn continue", hidden: "" });
+
+  function updateContinue(items) {
+    // items: dal più vecchio al più recente
+    const read = new Set(store.getReadChapters(mangaId));
+    let furthest = -1;
+    items.forEach((c, i) => { if (read.has(c.id)) furthest = i; });
+    const target = items[furthest + 1];
+    // Copia ora: il chiamante inverte `items` sul posto subito dopo.
+    const newestFirst = [...items].reverse();
+    const total = items.length;
+    continueBtn.hidden = false;
+    continueBtn.disabled = !target;
+    continueBtn.textContent = !target
+      ? "✓ Tutto letto"
+      : furthest < 0
+        ? "▶ Inizia a leggere"
+        : `▶ Continua · ${chapterShort(target.displayTitle)}`;
+    continueBtn.onclick = target
+      ? () => {
+          store.setLastRead(mangaId, target, total);
+          store.markChaptersAsRead(mangaId, newestFirst, target.id);
+          location.hash = `#/read/${target.id}?manga=${mangaId}`;
+        }
+      : null;
+  }
+
   const meta = [statusLabel(manga.status), manga.year].filter(Boolean).join(" · ");
 
   clear(body);
@@ -206,7 +241,7 @@ async function viewDetail(mangaId) {
         el("h1", {}, manga.title),
         meta ? el("p", { class: "muted" }, meta) : null,
         manga.tags.length ? el("div", { class: "tags" }, manga.tags.map((t) => el("span", { class: "tag" }, t))) : null,
-        saveBtn,
+        el("div", { class: "detail-actions" }, [saveBtn, continueBtn]),
       ]),
     ]),
     manga.description ? el("p", { class: "desc" }, manga.description) : null
@@ -232,6 +267,7 @@ async function viewDetail(mangaId) {
         chapWrap.append(el("p", { class: "hint" }, "Nessun capitolo disponibile."));
         return;
       }
+      updateContinue(items);
       const reversed = items.reverse();
       const totalChapters = items.length;
       for (const ch of reversed) {
@@ -278,6 +314,13 @@ async function viewReader(chapterId, mangaId) {
 
   const back = mangaId ? `#/manga/${mangaId}` : "#/home";
   const counter = el("span", { class: "counter" }, "…");
+  // Contatore "Cap. 91 · 3 / 25": il capitolo arriva con l'elenco capitoli.
+  let chapLabel = "";
+  let pageText = "…";
+  function setCounter(text) {
+    pageText = text;
+    counter.textContent = chapLabel ? `${chapLabel} · ${text}` : text;
+  }
 
   const modeBtn = el("button", { class: "icon-btn" }, readerPrefs.mode === "vertical" ? "↕" : "↔");
   modeBtn.addEventListener("click", () => {
@@ -310,6 +353,8 @@ async function viewReader(chapterId, mangaId) {
     api.fetchChapters(mangaId).then(({ items }) => {
       const idx = items.findIndex((c) => c.id === chapterId);
       if (idx < 0) return;
+      chapLabel = chapterShort(items[idx].displayTitle);
+      setCounter(pageText);
       const newestFirst = [...items].reverse();
       const go = (ch) => {
         store.setLastRead(mangaId, ch, items.length);
@@ -369,7 +414,7 @@ async function viewReader(chapterId, mangaId) {
       stage.append(img);
     });
     stage.append(nav);
-    counter.textContent = `1 / ${pages.length}`;
+    setCounter(`1 / ${pages.length}`);
     // aggiorna contatore in base allo scroll
     const imgs = [...stage.querySelectorAll("img.page")];
     const io = new IntersectionObserver(
@@ -377,7 +422,7 @@ async function viewReader(chapterId, mangaId) {
         for (const en of entries) {
           if (en.isIntersecting) {
             const i = Number(en.target.dataset.i);
-            counter.textContent = `${i + 1} / ${pages.length}`;
+            setCounter(`${i + 1} / ${pages.length}`);
           }
         }
       },
@@ -401,13 +446,13 @@ async function viewReader(chapterId, mangaId) {
       if (idx === pages.length) {
         img.hidden = true;
         stage.append(nav);
-        counter.textContent = "Fine";
+        setCounter("Fine");
         return;
       }
       nav.remove();
       img.hidden = false;
       img.src = pages[idx];
-      counter.textContent = `${idx + 1} / ${pages.length}`;
+      setCounter(`${idx + 1} / ${pages.length}`);
     }
     zoneL.addEventListener("click", () => show(idx - 1));
     zoneR.addEventListener("click", () => show(idx + 1));
