@@ -52,8 +52,8 @@ Main endpoints:
 | `GET /api/chapters?id=…` | chapter list |
 | `GET /api/pages?id=…` | chapter page URLs |
 | `GET /img?u=…` | cover/page proxy |
-| `GET /api/state` | user-state backup (protected) |
-| `PUT /api/state` | save the backup (protected) |
+| `GET /api/state` | user-state backup |
+| `PUT /api/state` | save the backup |
 
 Manga and chapter `id`s are the MangaWorld URL encoded in base64url.
 
@@ -80,8 +80,7 @@ The container restarts automatically after a crash or a server reboot
 
 ```bash
 # On the VPS, from the repo root:
-cp .env.example .env        # then set YOMI_TOKEN (required)
-docker compose up -d --build
+docker compose up -d --build   # optional: cp .env.example .env to change port/bind
 ```
 
 Make sure the Docker daemon itself starts at boot: `sudo systemctl enable docker`.
@@ -136,7 +135,6 @@ After=network.target
 [Service]
 WorkingDirectory=/opt/yomi/web
 Environment=HOST=127.0.0.1
-Environment=YOMI_TOKEN=put-a-passphrase-here
 ExecStart=/usr/bin/python3 server.py 8080
 Restart=always
 
@@ -154,30 +152,15 @@ By default all data lives **only in the browser** (`localStorage`) and is lost i
 you clear the cache or switch devices. With backup enabled, the app saves and
 restores its state from the server automatically.
 
-### 1. On the server: set a token
+Backup is always on, with no setup: the backup updates itself on every change
+(add to library, read a chapter…), and on a new device or after a cache wipe the
+app **pulls everything on startup**.
 
-The backup endpoint is **protected by a shared token**. Set it with the
-`YOMI_TOKEN` environment variable (in the systemd service or the environment):
+> ⚠️ The backup endpoint is **open**: anyone who reaches the server can read or
+> overwrite the data, and every device shares the **same** backup. Fine for
+> personal use; don't expose it publicly if that matters to you.
 
-```bash
-YOMI_TOKEN="your-passphrase" HOST=0.0.0.0 python server.py 8080
-```
-
-> ⚠️ If `YOMI_TOKEN` is **not** set, the endpoint is **open**: anyone who reaches
-> the server can read or overwrite your data. Always set it on a
-> network-exposed server.
-
-On startup the backend prints where it saves the backup and whether the token is
-active.
-
-### 2. In the app: enter the same token
-
-Library → **⚙** (top right) → paste the same passphrase → **Salva e
-sincronizza**.
-
-From then on the backup updates itself on every change (add to library, read a
-chapter…). On a new device or after a cache wipe, just re-enter the token and the
-app **pulls everything on startup**. The merge is designed to not lose data when
+Library → **⚙** (top right) → **Sincronizza ora** forces a sync. The merge is designed to not lose data when
 reading from multiple devices (union of library and read chapters, most recent
 progress for the last read).
 
@@ -201,7 +184,6 @@ YOMI_DATA=/persistent/path/yomi-data python server.py 8080
 1. Open `https://your-vps.example.com/` in **Safari**.
 2. **Share** → **Add to Home Screen**.
 3. Yomi becomes an icon on the Home Screen and opens full-screen.
-4. (Optional) Library → ⚙ → enter the token to enable backup.
 
 ---
 
@@ -212,7 +194,6 @@ YOMI_DATA=/persistent/path/yomi-data python server.py 8080
 | *(port)* | `5173` | First argument: `python server.py 8080` |
 | `HOST` | `0.0.0.0` | Listening interface |
 | `MANGAWORLD_BASE` | current domain | If MangaWorld changes TLD (`.mx`, `.ac`, …) |
-| `YOMI_TOKEN` | *(empty)* | Token protecting the backup. Empty = open endpoint |
 | `YOMI_DATA` | `../yomi-data` | Folder where the backup file is stored |
 
 ---
@@ -237,7 +218,7 @@ web/
 ```
 
 Data stored in the browser (`localStorage`): `yomi.library`, `yomi.lastRead`,
-`yomi.readChapters`, `yomi.reader.mode`, `yomi.sync.token`.
+`yomi.readChapters`, `yomi.reader.mode`.
 
 ---
 

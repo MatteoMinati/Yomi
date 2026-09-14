@@ -624,27 +624,7 @@ function viewSettings() {
     status.style.color = ok === false ? "var(--accent)" : "var(--muted)";
   }
 
-  const tokenInput = el("input", {
-    class: "search-input",
-    type: "password",
-    placeholder: "Token segreto del server",
-    value: sync.getToken(),
-  });
-
-  const saveBtn = el("button", { class: "btn save" }, "Salva e sincronizza");
-  saveBtn.addEventListener("click", async () => {
-    sync.setToken(tokenInput.value.trim());
-    setStatus("Sincronizzazione…");
-    try {
-      await sync.pull();
-      await sync.push();
-      setStatus("Sincronizzato ✓");
-    } catch (e) {
-      setStatus("Errore: " + e.message, false);
-    }
-  });
-
-  const syncNowBtn = el("button", { class: "btn" }, "Sincronizza ora");
+  const syncNowBtn = el("button", { class: "btn save" }, "Sincronizza ora");
   syncNowBtn.addEventListener("click", async () => {
     setStatus("Sincronizzazione…");
     try {
@@ -696,10 +676,8 @@ function viewSettings() {
     el("h1", {}, "Backup e sincronizzazione"),
     el("p", { class: "muted" },
       "Salva libreria e progressi sul server: restano al sicuro se pulisci la cache o cambi dispositivo."),
-    el("label", { class: "setup-label" }, "Token segreto del server"),
-    tokenInput,
-    saveBtn,
-    el("div", { class: "settings-actions" }, [syncNowBtn, exportBtn, importBtn]),
+    syncNowBtn,
+    el("div", { class: "settings-actions" }, [exportBtn, importBtn]),
     importInput,
     status
   );
@@ -786,18 +764,16 @@ window.addEventListener("hashchange", () => {
 
 function boot() {
   router();
-  // Sincronizzazione iniziale in background (solo se il token è configurato):
-  // scarica il backup dal server, lo fonde in locale e, se qualcosa è
-  // cambiato, ri-renderizza; poi ricarica sul server lo stato unito.
-  if (sync.getToken()) {
-    sync
-      .pull()
-      .then((changed) => {
-        if (changed) router();
-        sync.schedulePush();
-      })
-      .catch(() => {});
-  }
+  // Sincronizzazione iniziale in background: scarica il backup dal server, lo
+  // fonde in locale e, se qualcosa è cambiato, ri-renderizza; poi ricarica sul
+  // server lo stato unito.
+  sync
+    .pull()
+    .then((changed) => {
+      if (changed) router();
+      sync.schedulePush();
+    })
+    .catch(() => {});
 }
 
 window.addEventListener("DOMContentLoaded", boot);

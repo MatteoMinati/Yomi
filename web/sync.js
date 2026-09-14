@@ -7,21 +7,10 @@
 
 import { getProxyBase } from "./config.js";
 
-const TOKEN_KEY = "yomi.sync.token";
-
 const LIB_KEY = "yomi.library";
 const PROGRESS_KEY = "yomi.lastRead";
 const READ_KEY = "yomi.readChapters";
 const MODE_KEY = "yomi.reader.mode";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
-}
-
-export function setToken(t) {
-  if (t) localStorage.setItem(TOKEN_KEY, t);
-  else localStorage.removeItem(TOKEN_KEY);
-}
 
 function parse(raw, fb) {
   try {
@@ -81,17 +70,10 @@ export function applyMerged(remote) {
   return JSON.stringify(snapshot()) !== before;
 }
 
-function headers(extra) {
-  const h = Object.assign({}, extra || {});
-  const t = getToken();
-  if (t) h["X-Yomi-Token"] = t;
-  return h;
-}
-
 // Scarica lo stato dal server e lo fonde in locale. Ritorna true se il merge
 // ha modificato qualcosa (così la UI può ri-renderizzare).
 export async function pull() {
-  const res = await fetch(`${getProxyBase()}/api/state`, { headers: headers() });
+  const res = await fetch(`${getProxyBase()}/api/state`);
   if (!res.ok) throw new Error(`sync pull ${res.status}`);
   const remote = await res.json();
   return applyMerged(remote);
@@ -101,7 +83,7 @@ export async function pull() {
 export async function push() {
   const res = await fetch(`${getProxyBase()}/api/state`, {
     method: "PUT",
-    headers: headers({ "Content-Type": "application/json" }),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(snapshot()),
   });
   if (!res.ok) throw new Error(`sync push ${res.status}`);
@@ -109,10 +91,8 @@ export async function push() {
 }
 
 // Push con debounce: chiamabile a ogni modifica senza martellare il server.
-// Non fa nulla finché non è configurato un token (sync disattivato).
 let timer = null;
 export function schedulePush() {
-  if (!getToken()) return;
   clearTimeout(timer);
   timer = setTimeout(() => {
     push().catch(() => {});

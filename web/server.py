@@ -30,7 +30,6 @@ Dominio MangaWorld configurabile: MANGAWORLD_BASE=https://www.mangaworld.xx
 import os
 import sys
 import json
-import hmac
 import base64
 import urllib.parse
 import urllib.request
@@ -47,9 +46,6 @@ WEB_DIR = os.path.dirname(os.path.abspath(__file__))
 # Percorso e segreto configurabili via variabili d'ambiente.
 DATA_DIR = os.environ.get("YOMI_DATA", os.path.join(os.path.dirname(WEB_DIR), "yomi-data"))
 STATE_FILE = os.path.join(DATA_DIR, "state.json")
-# Token condiviso per proteggere gli endpoint di backup. Se vuoto: accesso
-# libero (sconsigliato su un server esposto in rete).
-YOMI_TOKEN = os.environ.get("YOMI_TOKEN", "")
 _state_lock = threading.Lock()
 
 # Host consentiti per il proxy immagini: tutto ciò che sta sotto il dominio
@@ -188,19 +184,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     # --- Backup / sync stato utente --------------------------------------
 
-    def _authorized(self) -> bool:
-        # Se non è configurato alcun token, accesso libero (personale).
-        if not YOMI_TOKEN:
-            return True
-        sent = self.headers.get("X-Yomi-Token", "")
-        if not sent:
-            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
-            sent = q.get("token", [""])[0]
-        return hmac.compare_digest(sent, YOMI_TOKEN)
-
     def _get_state(self):
-        if not self._authorized():
-            return self._json({"error": "non autorizzato"}, status=401)
         with _state_lock:
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -212,8 +196,6 @@ class Handler(SimpleHTTPRequestHandler):
         return self._json(data)
 
     def _put_state(self):
-        if not self._authorized():
-            return self._json({"error": "non autorizzato"}, status=401)
         length = int(self.headers.get("Content-Length", 0) or 0)
         if length <= 0 or length > 5_000_000:  # guardia: corpo mancante/eccessivo
             return self._json({"error": "corpo mancante o troppo grande"}, status=400)
@@ -301,7 +283,6 @@ def main():
     print(f"Yomi Web attivo su  http://{shown}:{port}")
     print(f"Sorgente dati: {BASE_URL}")
     print(f"Backup stato:  {STATE_FILE}")
-    print(f"Protezione:    {'token attivo' if YOMI_TOKEN else 'NESSUN token (imposta YOMI_TOKEN)'}")
     print("Premi Ctrl+C per fermare.")
     try:
         server.serve_forever()
