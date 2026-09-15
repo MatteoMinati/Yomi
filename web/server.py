@@ -19,9 +19,9 @@ Espone:
 Gli id manga/capitolo sono l'URL MangaWorld codificato in base64url.
 
 Uso:
-    uv run server.py            # porta 5173 (installa le dipendenze da uv.lock)
-    uv run server.py 80       # porta a scelta
-    HOST=0.0.0.0 uv run server.py 80   # esposto sul VPS
+    uv run server.py            # porta 8080 (installa le dipendenze da uv.lock)
+    uv run server.py 8080     # porta a scelta
+    HOST=0.0.0.0 uv run server.py 8080 # esposto sul VPS
 
 Dominio MangaWorld configurabile: MANGAWORLD_BASE=https://www.mangaworld.xx
 """
@@ -275,7 +275,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 5173
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
     host = os.environ.get("HOST", "0.0.0.0")
     server = ThreadingHTTPServer((host, port), Handler)
     shown = "localhost" if host in ("127.0.0.1", "0.0.0.0") else host

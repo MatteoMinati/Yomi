@@ -24,9 +24,9 @@ RUN useradd --system --uid 10001 yomi \
     && chown yomi:yomi /data
 USER yomi
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:80/api/ping', timeout=4)"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/ping', timeout=4)"
 
-CMD ["python", "server.py", "80"]
+CMD ["python", "server.py", "8080"]

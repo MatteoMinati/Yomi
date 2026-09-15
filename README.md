@@ -70,7 +70,7 @@ Python 3.13 and the backend dependencies from `uv.lock` by itself.
 npm install
 npm run build
 cd web
-uv run server.py            # port 5173 (or: uv run server.py 8080)
+uv run server.py            # port 8080 (or: uv run server.py 8080)
 ```
 
 Open **http://localhost:5173**. Stop with `Ctrl+C`.
@@ -92,7 +92,7 @@ Make sure the Docker daemon itself starts at boot: `sudo systemctl enable docker
 - Logs: `docker compose logs -f`
 - Update: `git pull && docker compose up -d --build`
 - Behind Caddy on the same host: set `YOMI_BIND=127.0.0.1` in `.env` and point
-  `reverse_proxy` to `127.0.0.1:80`.
+  `reverse_proxy` to `127.0.0.1:8080`.
 
 ---
 
@@ -109,10 +109,10 @@ cd web
 uv sync --locked
 
 # Exposed on all interfaces, on the chosen port:
-HOST=0.0.0.0 uv run server.py 80
+HOST=0.0.0.0 uv run server.py 8080
 ```
 
-Check: `http://YOUR-VPS-IP:80/api/ping` should return `pong`.
+Check: `http://YOUR-VPS-IP:8080/api/ping` should return `pong`.
 
 ### 2. HTTPS (required for the PWA on iPhone)
 
@@ -121,11 +121,11 @@ handles Let's Encrypt automatically):
 
 ```
 your-vps.example.com {
-    reverse_proxy 127.0.0.1:80
+    reverse_proxy 127.0.0.1:8080
 }
 ```
 
-and run the backend locally: `HOST=127.0.0.1 uv run server.py 80`.
+and run the backend locally: `HOST=127.0.0.1 uv run server.py 8080`.
 
 ### 3. Persistent service (systemd)
 
@@ -140,7 +140,7 @@ After=network.target
 WorkingDirectory=/opt/yomi/web
 Environment=HOST=127.0.0.1
 # Full path to uv (check with `which uv`)
-ExecStart=/usr/local/bin/uv run --locked server.py 80
+ExecStart=/usr/local/bin/uv run --locked server.py 8080
 Restart=always
 
 [Install]
@@ -179,7 +179,7 @@ downloadable), by default at `yomi-data/state.json` next to the `web/` folder.
 You can pick another path with `YOMI_DATA`:
 
 ```bash
-YOMI_DATA=/persistent/path/yomi-data uv run server.py 80
+YOMI_DATA=/persistent/path/yomi-data uv run server.py 8080
 ```
 
 ---
@@ -196,7 +196,7 @@ YOMI_DATA=/persistent/path/yomi-data uv run server.py 80
 
 | Variable | Default | Description |
 |---|---|---|
-| *(port)* | `5173` | First argument: `uv run server.py 8080` |
+| *(port)* | `8080` | First argument: `uv run server.py 8080` |
 | `HOST` | `0.0.0.0` | Listening interface |
 | `MANGAWORLD_BASE` | current domain | If MangaWorld changes TLD (`.mx`, `.ac`, …) |
 | `YOMI_DATA` | `../yomi-data` | Folder where the backup file is stored |
