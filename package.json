@@ -1,0 +1,21 @@
+{
+  "name": "yomi",
+  "version": "1.0.0",
+  "description": "Yomi PWA frontend bundle and Motion JS animation tooling",
+  "private": true,
+  "scripts": {
+    "build": "esbuild web/app.js --bundle --format=esm --minify --outfile=web/app.bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@git.francescorocca.me:MatteoMinati/Yomi.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "dependencies": {
+    "motion": "^13.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

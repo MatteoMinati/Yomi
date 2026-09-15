@@ -40,7 +40,9 @@ MangaWorld is **not an API** — it's an HTML site scraped for its data
 - also hosts the PWA's **static files** (single origin, no CORS);
 - stores the user-state **backup** on `/api/state`.
 
-The PWA and the backend run on the **same host**: no URL to configure.
+The PWA and the backend run on the **same host**: no URL to configure. The
+frontend is bundled with esbuild so the browser can use Motion JS while the
+Python server continues to serve a static app.
 
 Main endpoints:
 
@@ -61,10 +63,12 @@ Manga and chapter `id`s are the MangaWorld URL encoded in base64url.
 
 ## Quick start (local, on your PC)
 
-Requires **[uv](https://docs.astral.sh/uv/)** (it installs Python 3.13 and the
-dependencies from `uv.lock` by itself).
+Requires **[uv](https://docs.astral.sh/uv/)** and Node.js/npm. uv installs
+Python 3.13 and the backend dependencies from `uv.lock` by itself.
 
 ```bash
+npm install
+npm run build
 cd web
 uv run server.py            # port 5173 (or: uv run server.py 8080)
 ```
@@ -226,9 +230,10 @@ Data stored in the browser (`localStorage`): `yomi.library`, `yomi.lastRead`,
 
 ## Stack
 
-- **Frontend:** vanilla JavaScript (ES modules), no build step.
+- **Frontend:** vanilla JavaScript bundled with esbuild and Motion JS.
 - **Backend:** Python 3.13+ (`requests`, `beautifulsoup4`, `lxml`), managed with uv.
 - **Storage:** browser `localStorage` + JSON backup on the server.
 - **Deploy:** VPS with an HTTPS reverse proxy (e.g. Caddy).
 
-No npm, no build, no ads, no tracking.
+No framework runtime, no ads, no tracking. A frontend build is required after
+changing JavaScript.

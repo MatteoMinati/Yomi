@@ -3,6 +3,7 @@
 import * as api from "./api.js";
 import * as store from "./store.js?v=3";
 import * as sync from "./sync.js";
+import { enter, press, stagger, success } from "./motion.js";
 
 const app = document.getElementById("app");
 const tabbar = document.getElementById("tabbar");
@@ -35,9 +36,43 @@ function spinner() {
   return el("div", { class: "loader" }, el("div", { class: "spin" }));
 }
 
+function loadingPanel(label = "Caricamento…") {
+  return el("div", { class: "loading-panel", role: "status", "aria-live": "polite" }, [
+    el("div", { class: "skeleton-line" }),
+    el("p", { class: "loading-label" }, label),
+  ]);
+}
+
+function skeletonCard() {
+  return el("div", { class: "skeleton-card", "aria-hidden": "true" }, [
+    el("div", { class: "skeleton-cover" }),
+    el("div", { class: "skeleton-text" }),
+    el("div", { class: "skeleton-text short" }),
+  ]);
+}
+
+function skeletonShelf(title) {
+  return el("section", { class: "shelf skeleton-shelf", "aria-hidden": "true" }, [
+    el("h2", {}, title),
+    el("div", { class: "row" }, Array.from({ length: 5 }, skeletonCard)),
+  ]);
+}
+
+function friendlyError(error) {
+  const message = String(error?.message || error || "");
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return "Connessione non disponibile. Controlla la rete e riprova.";
+  }
+  if (/404/.test(message)) return "Questo contenuto non è più disponibile.";
+  if (/429/.test(message)) return "Troppe richieste in poco tempo. Riprova tra qualche secondo.";
+  if (/5\d\d/.test(message)) return "Il servizio non risponde al momento. Riprova tra poco.";
+  return message || "Qualcosa non ha funzionato. Riprova.";
+}
+
 function errorBox(message, onRetry) {
   return el("div", { class: "errorbox" }, [
-    el("p", {}, message),
+    el("p", { class: "error-title" }, "Non riesco a caricare questo contenuto"),
+    el("p", { class: "error-detail" }, friendlyError(message)),
     onRetry ? el("button", { class: "btn", onClick: onRetry }, "Riprova") : null,
   ]);
 }
@@ -67,16 +102,32 @@ function mangaCard(m) {
   } else {
     cover.append(el("div", { class: "cover-ph" }, "📖"));
   }
-  return el("a", { class: "card", href: `#/manga/${m.id}` }, [
+  const card = el("a", { class: "card", href: `#/manga/${m.id}` }, [
     cover,
     el("span", { class: "card-title" }, m.title),
   ]);
+  return card;
 }
 
 function carousel(title, items) {
   return el("section", { class: "shelf" }, [
     el("h2", {}, title),
     el("div", { class: "row" }, items.map(mangaCard)),
+  ]);
+}
+
+function continueShelf(items) {
+  return el("section", { class: "shelf continue-shelf" }, [
+    el("div", { class: "section-heading" }, [
+      el("h2", {}, "Continua a leggere"),
+      el("span", { class: "section-note" }, "Il tuo prossimo capitolo"),
+    ]),
+    el("div", { class: "row" }, items.map((m) => {
+      const card = mangaCard(m);
+      const last = store.getLastRead(m.id);
+      if (last) card.append(el("span", { class: "resume" }, last.label));
+      return card;
+    })),
   ]);
 }
 
@@ -94,16 +145,26 @@ async function viewHome() {
       el("h1", { class: "brand" }, "読み Yomi"),
     ])
   );
-  const body = el("div", { class: "page" }, spinner());
+  const body = el("div", { class: "page" }, [
+    el("div", { class: "home-intro" }, [
+      el("h2", {}, "Trova la tua prossima storia."),
+    ]),
+    skeletonShelf("Popolari"),
+    skeletonShelf("Aggiornati di recente"),
+  ]);
   app.append(body);
+  enter(body, { y: 6, duration: 280 });
 
   try {
     const { popular, latest } = await api.fetchHome();
     clear(body);
+    const inProgress = store.getLibrary().filter((m) => store.getLastRead(m.id));
+    if (inProgress.length) body.append(continueShelf(inProgress.slice(0, 8)));
     body.append(
       carousel("Popolari", popular),
       carousel("Aggiornati di recente", latest)
     );
+    stagger(body.querySelectorAll(".shelf"), { y: 14, duration: 420 });
   } catch (e) {
     clear(body);
     body.append(errorBox(e.message, viewHome));
@@ -137,6 +198,7 @@ async function viewSearch() {
       input,
     ])
   );
+  enter(app.querySelector(".topbar"), { y: -8, duration: 260 });
 
   const results = el("div", { class: "page" });
   app.append(results);
@@ -149,14 +211,19 @@ async function viewSearch() {
       return;
     }
     clear(results);
-    results.append(spinner());
+    results.append(loadingPanel("Cerco manga…"));
     try {
       const { items } = await api.search(q);
       clear(results);
       if (!items.length) {
-        results.append(el("p", { class: "hint" }, "Nessun risultato."));
+        results.append(el("div", { class: "empty compact" }, [
+          el("div", { class: "empty-ico", "aria-hidden": "true" }, "⌕"),
+          el("p", {}, "Nessun manga trovato."),
+          el("p", { class: "muted" }, "Prova con un titolo più breve o controlla l’ortografia."),
+        ]));
       } else {
         results.append(grid(items));
+        stagger(results.querySelectorAll(".card"));
       }
     } catch (e) {
       clear(results);
@@ -174,7 +241,7 @@ async function viewDetail(mangaId) {
   clearActiveTab();
   clear(app);
   app.append(backBar("#/home"));
-  const body = el("div", { class: "page" }, spinner());
+  const body = el("div", { class: "page" }, loadingPanel("Carico il titolo…"));
   app.append(body);
 
   let manga;
@@ -196,6 +263,7 @@ async function viewDetail(mangaId) {
     const nowSaved = store.toggleSaved(manga);
     saveBtn.classList.toggle("on", nowSaved);
     saveBtn.textContent = nowSaved ? "✓ In libreria" : "+ Aggiungi";
+    success(saveBtn);
   });
 
   // Riprende dal capitolo dopo il più avanzato già letto (compare quando
@@ -259,7 +327,7 @@ async function viewDetail(mangaId) {
 
   async function loadChapters() {
     clear(chapWrap);
-    chapWrap.append(spinner());
+    chapWrap.append(loadingPanel("Carico i capitoli…"));
     try {
       const { items } = await api.fetchChapters(mangaId);
       clear(chapWrap);
@@ -322,15 +390,20 @@ async function viewReader(chapterId, mangaId) {
     counter.textContent = chapLabel ? `${chapLabel} · ${text}` : text;
   }
 
-  const modeBtn = el("button", { class: "icon-btn" }, readerPrefs.mode === "vertical" ? "↕" : "↔");
+  const modeBtn = el("button", {
+    class: "icon-btn",
+    title: "Cambia modalità di lettura",
+    "aria-label": "Cambia modalità di lettura",
+  }, readerPrefs.mode === "vertical" ? "↕" : "↔");
   modeBtn.addEventListener("click", () => {
     readerPrefs.mode = readerPrefs.mode === "vertical" ? "horizontal" : "vertical";
     localStorage.setItem("yomi.reader.mode", readerPrefs.mode);
+    press(modeBtn);
     render();
   });
 
   const bar = el("header", { class: "reader-bar" }, [
-    el("a", { class: "icon-btn", href: back }, "‹"),
+    el("a", { class: "icon-btn", href: back, "aria-label": "Torna indietro", title: "Torna indietro" }, "‹"),
     counter,
     el("div", { class: "reader-actions" }, [modeBtn]),
   ]);
@@ -376,7 +449,7 @@ async function viewReader(chapterId, mangaId) {
 
   async function load() {
     clear(stage);
-    stage.append(spinner());
+    stage.append(loadingPanel("Carico le pagine…"));
     try {
       pages = await api.fetchPages(chapterId);
       if (!pages.length) {
@@ -480,6 +553,7 @@ function viewLibrary() {
         class: "icon-btn",
         href: "#/settings",
         "aria-label": "Backup e impostazioni",
+        title: "Backup e impostazioni",
         html: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
       }),
     ])
@@ -494,6 +568,7 @@ function viewLibrary() {
         el("div", { class: "empty-ico" }, "📚"),
         el("p", {}, "La tua libreria è vuota."),
         el("p", { class: "muted" }, "Aggiungi manga dai loro dettagli."),
+        el("a", { class: "btn primary-link", href: "#/search" }, "Cerca un manga"),
       ])
     );
     return;
@@ -582,7 +657,7 @@ function viewLibrary() {
     // prima di disegnare: mostriamo lo spinner mentre li recuperiamo.
     if (key === "new") {
       clear(gridWrap);
-      gridWrap.append(spinner());
+      gridWrap.append(loadingPanel("Aggiorno la libreria…"));
       await computeNew();
     }
     renderGrid(sortList(key));
@@ -598,6 +673,7 @@ function viewLibrary() {
           store.setLibrarySort(key);
           for (const c of filterRow.children) c.classList.remove("on");
           chip.classList.add("on");
+          press(chip);
           renderFor(key);
         },
       },
@@ -619,6 +695,10 @@ function viewSettings() {
   app.append(body);
 
   const status = el("p", { class: "muted sync-status" }, "");
+  const last = sync.lastSync();
+  const lastSyncText = last
+    ? `Ultima sincronizzazione: ${last.toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" })}`
+    : "Nessuna sincronizzazione ancora effettuata.";
   function setStatus(msg, ok) {
     status.textContent = msg;
     status.style.color = ok === false ? "var(--accent)" : "var(--muted)";
@@ -626,13 +706,20 @@ function viewSettings() {
 
   const syncNowBtn = el("button", { class: "btn save" }, "Sincronizza ora");
   syncNowBtn.addEventListener("click", async () => {
+    if (syncNowBtn.disabled) return;
+    syncNowBtn.disabled = true;
+    syncNowBtn.textContent = "Sincronizzazione…";
     setStatus("Sincronizzazione…");
     try {
       await sync.pull();
       await sync.push();
-      setStatus("Sincronizzato ✓");
+      setStatus("Sincronizzato ora. I tuoi dati sono aggiornati.");
+      success(syncNowBtn);
     } catch (e) {
-      setStatus("Errore: " + e.message, false);
+      setStatus(`Sincronizzazione non riuscita: ${friendlyError(e)}`, false);
+    } finally {
+      syncNowBtn.disabled = false;
+      syncNowBtn.textContent = "Sincronizza ora";
     }
   });
 
@@ -662,23 +749,32 @@ function viewSettings() {
   importInput.addEventListener("change", async () => {
     const file = importInput.files[0];
     if (!file) return;
+    const confirmed = window.confirm("Importare questo backup? I dati verranno uniti a quelli già presenti su questo dispositivo.");
+    if (!confirmed) {
+      importInput.value = "";
+      return;
+    }
     try {
       const obj = JSON.parse(await file.text());
       sync.applyMerged(obj);
       sync.schedulePush();
-      setStatus("Backup importato ✓");
+      setStatus("Backup importato e unito ai dati locali.");
+      success(importBtn);
     } catch (e) {
-      setStatus("Import fallito: " + e.message, false);
+      setStatus(`Import non riuscito: ${friendlyError(e)}`, false);
     }
+    importInput.value = "";
   });
 
   body.append(
     el("h1", {}, "Backup e sincronizzazione"),
     el("p", { class: "muted" },
-      "Salva libreria e progressi sul server: restano al sicuro se pulisci la cache o cambi dispositivo."),
+      "Salva libreria e progressi sul backup personale del server, così puoi recuperarli se pulisci la cache o cambi dispositivo."),
+    el("p", { class: "sync-note" }, "Uso personale: questo backup è condiviso tra i tuoi dispositivi e non è un account privato."),
     syncNowBtn,
     el("div", { class: "settings-actions" }, [exportBtn, importBtn]),
     importInput,
+    el("p", { class: "muted last-sync" }, lastSyncText),
     status
   );
 }
@@ -692,6 +788,8 @@ function backBar(fallback) {
       {
         class: "icon-btn",
         href: fallback,
+        "aria-label": "Torna indietro",
+        title: "Torna indietro",
         onClick: (e) => {
           if (history.length > 1) {
             e.preventDefault();

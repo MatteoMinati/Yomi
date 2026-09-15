@@ -1,7 +1,7 @@
 {
   "name": "Yomi",
   "short_name": "Yomi",
-  "description": "Lettore di manga senza pubblicità, basato su MangaDex.",
+  "description": "Lettore personale di manga senza pubblicità, basato su MangaWorld.",
   "lang": "it",
   "start_url": "./index.html",
   "scope": "./",

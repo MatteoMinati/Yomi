@@ -11,6 +11,7 @@ const LIB_KEY = "yomi.library";
 const PROGRESS_KEY = "yomi.lastRead";
 const READ_KEY = "yomi.readChapters";
 const MODE_KEY = "yomi.reader.mode";
+const LAST_SYNC_KEY = "yomi.lastSync";
 
 function parse(raw, fb) {
   try {
@@ -76,7 +77,9 @@ export async function pull() {
   const res = await fetch(`${getProxyBase()}/api/state`);
   if (!res.ok) throw new Error(`sync pull ${res.status}`);
   const remote = await res.json();
-  return applyMerged(remote);
+  const changed = applyMerged(remote);
+  localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+  return changed;
 }
 
 // Invia lo stato locale al server (sovrascrive il file di backup).
@@ -87,7 +90,13 @@ export async function push() {
     body: JSON.stringify(snapshot()),
   });
   if (!res.ok) throw new Error(`sync push ${res.status}`);
+  localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
   return true;
+}
+
+export function lastSync() {
+  const value = localStorage.getItem(LAST_SYNC_KEY);
+  return value ? new Date(value) : null;
 }
 
 // Push con debounce: chiamabile a ogni modifica senza martellare il server.
