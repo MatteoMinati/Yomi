@@ -32,8 +32,22 @@ function clear(n) {
   n.replaceChildren();
 }
 
-function spinner() {
-  return el("div", { class: "loader" }, el("div", { class: "spin" }));
+function icon(name) {
+  const paths = {
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
+    vertical: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16M16 4v16M5 7l3-3 3 3M13 17l3 3 3-3"/></svg>',
+    horizontal: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M4 16h16M7 5 4 8l3 3M17 13l3 3-3 3"/></svg>',
+    search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>',
+    library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M8 4v13a3 3 0 0 0 3 3"/></svg>',
+  };
+  return paths[name] || "";
+}
+
+function brand(compact = false) {
+  return el("h1", { class: `brand${compact ? " small" : ""}` }, [
+    el("span", { class: "brand-mark", "aria-hidden": "true" }, "読"),
+    el("span", { class: "brand-word" }, "Yomi"),
+  ]);
 }
 
 function loadingPanel(label = "Caricamento…") {
@@ -100,7 +114,7 @@ function mangaCard(m) {
       el("img", { src: m.coverURL, loading: "lazy", alt: m.title, onError: (e) => e.target.remove() })
     );
   } else {
-    cover.append(el("div", { class: "cover-ph" }, "📖"));
+    cover.append(el("div", { class: "cover-ph" }, "Y"));
   }
   const card = el("a", { class: "card", href: `#/manga/${m.id}` }, [
     cover,
@@ -142,7 +156,7 @@ async function viewHome() {
   clear(app);
   app.append(
     el("header", { class: "topbar spread" }, [
-      el("h1", { class: "brand" }, "読み Yomi"),
+      brand(),
     ])
   );
   const body = el("div", { class: "page" }, [
@@ -217,7 +231,7 @@ async function viewSearch() {
       clear(results);
       if (!items.length) {
         results.append(el("div", { class: "empty compact" }, [
-          el("div", { class: "empty-ico", "aria-hidden": "true" }, "⌕"),
+          el("div", { class: "empty-ico", html: icon("search") }),
           el("p", {}, "Nessun manga trovato."),
           el("p", { class: "muted" }, "Prova con un titolo più breve o controlla l’ortografia."),
         ]));
@@ -303,7 +317,7 @@ async function viewDetail(mangaId) {
       el("div", { class: "cover big" }, [
         manga.coverURLLarge
           ? el("img", { src: manga.coverURLLarge, alt: manga.title })
-          : el("div", { class: "cover-ph" }, "📖"),
+          : el("div", { class: "cover-ph" }, "Y"),
       ]),
       el("div", { class: "detail-info" }, [
         el("h1", {}, manga.title),
@@ -394,7 +408,7 @@ async function viewReader(chapterId, mangaId) {
     class: "icon-btn",
     title: "Cambia modalità di lettura",
     "aria-label": "Cambia modalità di lettura",
-  }, readerPrefs.mode === "vertical" ? "↕" : "↔");
+  }, el("span", { html: icon(readerPrefs.mode === "vertical" ? "vertical" : "horizontal") }));
   modeBtn.addEventListener("click", () => {
     readerPrefs.mode = readerPrefs.mode === "vertical" ? "horizontal" : "vertical";
     localStorage.setItem("yomi.reader.mode", readerPrefs.mode);
@@ -403,7 +417,7 @@ async function viewReader(chapterId, mangaId) {
   });
 
   const bar = el("header", { class: "reader-bar" }, [
-    el("a", { class: "icon-btn", href: back, "aria-label": "Torna indietro", title: "Torna indietro" }, "‹"),
+    el("a", { class: "icon-btn", href: back, "aria-label": "Torna indietro", title: "Torna indietro", html: icon("back") }),
     counter,
     el("div", { class: "reader-actions" }, [modeBtn]),
   ]);
@@ -466,7 +480,7 @@ async function viewReader(chapterId, mangaId) {
 
   function render() {
     clear(stage);
-    modeBtn.textContent = readerPrefs.mode === "vertical" ? "↕" : "↔";
+    modeBtn.innerHTML = icon(readerPrefs.mode === "vertical" ? "vertical" : "horizontal");
     if (readerPrefs.mode === "vertical") renderVertical();
     else renderHorizontal();
   }
@@ -565,7 +579,7 @@ function viewLibrary() {
   if (!lib.length) {
     body.append(
       el("div", { class: "empty" }, [
-        el("div", { class: "empty-ico" }, "📚"),
+        el("div", { class: "empty-ico", html: icon("library") }),
         el("p", {}, "La tua libreria è vuota."),
         el("p", { class: "muted" }, "Aggiungi manga dai loro dettagli."),
         el("a", { class: "btn primary-link", href: "#/search" }, "Cerca un manga"),
@@ -797,7 +811,7 @@ function backBar(fallback) {
           }
         },
       },
-      "‹"
+      el("span", { html: icon("back") })
     ),
   ]);
 }
