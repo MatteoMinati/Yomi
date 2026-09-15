@@ -3,7 +3,8 @@
 yomi-data/
 *.tmp
 
-# Ambiente Python locale
+# Ambienti Python locali
+/.venv/
 web/.venv/
 __pycache__/
 *.pyc

@@ -88,7 +88,7 @@ Make sure the Docker daemon itself starts at boot: `sudo systemctl enable docker
 - Logs: `docker compose logs -f`
 - Update: `git pull && docker compose up -d --build`
 - Behind Caddy on the same host: set `YOMI_BIND=127.0.0.1` in `.env` and point
-  `reverse_proxy` to `127.0.0.1:8080`.
+  `reverse_proxy` to `127.0.0.1:80`.
 
 ---
 
@@ -105,10 +105,10 @@ cd web
 uv sync --locked
 
 # Exposed on all interfaces, on the chosen port:
-HOST=0.0.0.0 uv run server.py 8080
+HOST=0.0.0.0 uv run server.py 80
 ```
 
-Check: `http://YOUR-VPS-IP:8080/api/ping` should return `pong`.
+Check: `http://YOUR-VPS-IP:80/api/ping` should return `pong`.
 
 ### 2. HTTPS (required for the PWA on iPhone)
 
@@ -117,11 +117,11 @@ handles Let's Encrypt automatically):
 
 ```
 your-vps.example.com {
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:80
 }
 ```
 
-and run the backend locally: `HOST=127.0.0.1 uv run server.py 8080`.
+and run the backend locally: `HOST=127.0.0.1 uv run server.py 80`.
 
 ### 3. Persistent service (systemd)
 
@@ -136,7 +136,7 @@ After=network.target
 WorkingDirectory=/opt/yomi/web
 Environment=HOST=127.0.0.1
 # Full path to uv (check with `which uv`)
-ExecStart=/usr/local/bin/uv run --locked server.py 8080
+ExecStart=/usr/local/bin/uv run --locked server.py 80
 Restart=always
 
 [Install]
@@ -175,7 +175,7 @@ downloadable), by default at `yomi-data/state.json` next to the `web/` folder.
 You can pick another path with `YOMI_DATA`:
 
 ```bash
-YOMI_DATA=/persistent/path/yomi-data uv run server.py 8080
+YOMI_DATA=/persistent/path/yomi-data uv run server.py 80
 ```
 
 ---
