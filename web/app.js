@@ -754,12 +754,12 @@ async function router() {
     default:
       location.hash = "#/home";
   }
-  window.scrollTo(0, 0);
+  document.body.scrollTo(0, 0);
 }
 
 window.addEventListener("hashchange", () => {
   router();
-  window.scrollTo(0, 0);
+  document.body.scrollTo(0, 0);
 });
 
 function boot() {
